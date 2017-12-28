@@ -1,0 +1,31 @@
+body > div{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+body > div > span {
+    display: flex;
+    flex-direction: column;
+    margin: 0 0.5em;
+}
+
+body > div > span > label {
+    padding-left: 0.5em;
+    margin-bottom: 0.25em;
+}
+
+body > div > span > span {
+    align-items: center;
+    display: flex;
+    margin-top: 0.25em;
+}
+
+body > div > span > span > label {
+    font-size: 0.8em;
+}
+
+textarea {
+    height: 21px;
+    resize: none;
+}
