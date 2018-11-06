@@ -28,6 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.focus();
     }
 
+    const siteValue = new URLSearchParams(location.search).get('site');
+    if (siteValue) {
+        siteInput.value = siteValue;
+        onChange();
+    }
+
     function onChange() {
         computeUniqpass(passwordInput.value, siteInput.value).then(uniqpass => {
             sitePasswordTextArea.value = uniqpass;
