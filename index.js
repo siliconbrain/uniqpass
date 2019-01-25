@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const rememberPasswordInput = document.getElementById('remember-password');
     const siteInput = document.getElementById('site');
-    const sitePasswordTextArea = document.getElementById('site-password');
+    const sitePasswordInput = document.getElementById('site-password');
 
     if (localStorage.getItem(passwordStorageKey) !== null) {
         passwordInput.value = localStorage.getItem(passwordStorageKey);
@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function onChange() {
         computeUniqpass(passwordInput.value, siteInput.value).then(uniqpass => {
-            sitePasswordTextArea.value = uniqpass;
-            if (sitePasswordTextArea.value !== "") sitePasswordTextArea.select();
+            sitePasswordInput.value = uniqpass;
+            if (sitePasswordInput.value !== "") sitePasswordInput.select();
         });
     }
 

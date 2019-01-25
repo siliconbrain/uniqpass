@@ -25,7 +25,6 @@ body > div > span > span > label {
     font-size: 0.8em;
 }
 
-textarea {
-    height: 21px;
-    resize: none;
+#site-password {
+    width: 44ch;
 }
