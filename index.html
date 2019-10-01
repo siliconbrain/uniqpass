@@ -8,22 +8,35 @@
         <script src="index.js"></script>
     </head>
     <body>
-        <div>
-            <span>
-                <label>secret</label>
-                <input id="secret" type="password">
-                <span><input id="remember-secret" type="checkbox" tabindex="-1"><label>remember secret</label></span>
-            </span>
-            <span>
-                <label>subject</label>
-                <input id="subject" type="text" placeholder="example.org">
-            </span>
-            <span>
-                <label>uniqpass</label>
-                <input id="password" type="text" readonly>
-                <label>limit</label>
-                <input id="limit" type="number" min="1" value="44">
-            </span>
-        </div>
+        <section id="options">
+            <div id="secret" class="option">
+                <label for="secret-input">secret</label>
+                <input id="secret-input" type="password">
+                <div id="remember-secret">
+                    <input id="remember-secret-input" type="checkbox" tabindex="1">
+                    <label for="remember-secret-input">remember secret</label>
+                </div>
+            </div>
+            <div id="subject" class="option">
+                <label for="subject-input">subject</label>
+                <input id="subject-input" type="text" placeholder="example.org">
+            </div>
+            <div id="limit" class="option">
+                <label for="limit-input">limit</label>
+                <span>
+                    <input id="limit-input" type="number" min="1" value="44">
+                    <button id="reset-limit">⟲</button>
+                </span>
+            </div>
+        </section>
+        <section id="output">
+            <div id="password">
+                <label for="password-input">uniqpass</label>
+                <span>
+                    <input id="password-input" type="text" readonly>
+                    <button id="password-to-clipboard"><span>📋</span></button>
+                </span>
+            </div>
+        </section>
     </body>
 </html>

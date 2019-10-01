@@ -70,7 +70,6 @@ const variable = function() {
     }
 
     return {
-        make,
         fromInputValue: (input) => make({
             get: () => input.value,
             set: (value) => { input.value = value },
@@ -81,6 +80,7 @@ const variable = function() {
             set: (value) => { input.checked = value },
             listen: (listener) => input.addEventListener('change', listener),
         }),
+        make,
         map: (variable, mapping) => make({
             get: mapping.getter(variable.get),
             set: mapping.setter(variable.set),
@@ -88,6 +88,12 @@ const variable = function() {
         }),
     }
 }()
+
+const listenable = {
+    fromButtonClick: (button) => ({
+        listen: (listener) => button.addEventListener('click', () => listener()),
+    }),
+}
 
 function combineLatest(...listenables) {
     let listening = false
@@ -114,11 +120,13 @@ function combineLatest(...listenables) {
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = {
-        limit: document.getElementById('limit'),
-        password: document.getElementById('password'),
-        rememberPassword: document.getElementById('remember-secret'),
-        secret: document.getElementById('secret'),
-        subject: document.getElementById('subject'),
+        limit: document.getElementById('limit-input'),
+        password: document.getElementById('password-input'),
+        passwordToClipboard: document.getElementById('password-to-clipboard'),
+        rememberPassword: document.getElementById('remember-secret-input'),
+        resetLimit: document.getElementById('reset-limit'),
+        secret: document.getElementById('secret-input'),
+        subject: document.getElementById('subject-input'),
     }
 
     const controls = {
@@ -130,7 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         ),
         password: variable.fromInputValue(form.password),
+        passwordToClipboard: listenable.fromButtonClick(form.passwordToClipboard),
         rememberSecret: variable.fromInputChecked(form.rememberPassword),
+        resetLimit: listenable.fromButtonClick(form.resetLimit),
         secret: variable.fromInputValue(form.secret),
         subject: variable.fromInputValue(form.subject),
     }
@@ -168,9 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subject !== "") {
             params.set('subject', subject)
         }
-        if (limit !== defaultLimit) {
-            params.set('limit', limit)
-        }
+
+        params.set('limit', limit)
+
         history.replaceState(null, "", url)
     })
+
+    controls.resetLimit.listen(() => controls.limit.set(defaultLimit))
+
+    controls.passwordToClipboard.listen(() => navigator.clipboard.writeText(controls.password.get()))
 })

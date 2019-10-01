@@ -1,30 +1,42 @@
-body > div{
+input {
+    height: 23px;
+}
+
+#options, #output {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
 }
 
-body > div > span {
+#options .option, #password {
     display: flex;
     flex-direction: column;
-    margin: 0 0.5em;
+    margin: 0.5em;
 }
 
-body > div > span > label {
-    padding-left: 0.5em;
+#options .option label, #password label {
+    padding-left: 0.1em;
     margin-bottom: 0.25em;
 }
 
-body > div > span > span {
-    align-items: center;
+#options .option > span, #output span {
     display: flex;
-    margin-top: 0.25em;
+    flex-direction: row;
+    align-items: center;
 }
 
-body > div > span > span > label {
+#output {
+    margin: 0.5em 0;
+}
+
+#limit-input {
+    width: 6ch;
+}
+
+#remeber-secret label {
     font-size: 0.8em;
 }
 
-#password {
+#password-input {
     width: 44ch;
 }
