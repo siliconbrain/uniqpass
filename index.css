@@ -37,6 +37,34 @@ input {
     font-size: 0.8em;
 }
 
+#charset.option {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: 1fr 1fr;
+    justify-items: center;
+}
+
+#charset.option > span {
+    margin: 0.125em;
+}
+
+#charset.option input[type="checkbox"] {
+    display: none;
+}
+
+#charset.option label {
+    background-color: whitesmoke;
+    border-color: grey;
+    border-style: solid;
+    border-width: 1px;
+    margin: 0;
+    padding: 0.2em;
+}
+
+#charset.option input:not(:checked) + label {
+    text-decoration: line-through;
+}
+
 #password-input {
     width: 44ch;
 }

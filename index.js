@@ -6,10 +6,28 @@ function arrayBufferToBase64(buffer) {
 
 const defaultLimit = 44;
 
-function computeUniqpass(secret, subject, limit) {
+function getExcludePattern(exclude) {
+    const parts = []
+    if (!!exclude.upper) {
+        parts.push('A-Z')
+    }
+    if (!!exclude.lower) {
+        parts.push('a-z')
+    }
+    if (!!exclude.number) {
+        parts.push('0-9')
+    }
+    if (!!exclude.symbol) {
+        parts.push('+/=')
+    }
+    return new RegExp('[' + parts.join('') + ']', 'g')
+}
+
+function computeUniqpass(secret, subject, limit, exclude) {
     if (secret !== "" && subject !== "") {
         return crypto.subtle.digest('SHA-256', textEncoder.encode(secret + subject))
             .then(arrayBufferToBase64)
+            .then(pass => pass.replace(getExcludePattern(exclude), ''))
             .then(pass => pass.substring(0, limit || undefined))
     }
     return Promise.resolve("")
@@ -37,9 +55,20 @@ function loadValuesFromURL(controls) {
             controls.limit.set(limitValue)
         }
     }
+
     const subjectValue = params.get('subject')
     if (subjectValue) {
         controls.subject.set(subjectValue)
+    }
+
+    const exclude = params.get('ex')
+    if (exclude) {
+        Object.entries({
+            'l': controls.charsetLower,
+            'n': controls.charsetNumber,
+            's': controls.charsetSymbol,
+            'u': controls.charsetUpper,
+        }).forEach(([key, control]) => control.set(!exclude.includes(key)))
     }
 }
 
@@ -93,6 +122,9 @@ const listenable = {
     fromButtonClick: (button) => ({
         listen: (listener) => button.addEventListener('click', () => listener()),
     }),
+    map: (transform) => (listenable) => ({
+        listen: (listener) => listenable.listen((value) => listener(transform(value))),
+    }),
 }
 
 function combineLatest(...listenables) {
@@ -120,6 +152,10 @@ function combineLatest(...listenables) {
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = {
+        charsetLower: document.getElementById('charset-lower-input'),
+        charsetNumber: document.getElementById('charset-number-input'),
+        charsetSymbol: document.getElementById('charset-symbol-input'),
+        charsetUpper: document.getElementById('charset-upper-input'),
         limit: document.getElementById('limit-input'),
         password: document.getElementById('password-input'),
         passwordToClipboard: document.getElementById('password-to-clipboard'),
@@ -130,6 +166,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const controls = {
+        charsetLower: variable.fromInputChecked(form.charsetLower),
+        charsetNumber: variable.fromInputChecked(form.charsetNumber),
+        charsetSymbol: variable.fromInputChecked(form.charsetSymbol),
+        charsetUpper: variable.fromInputChecked(form.charsetUpper),
         limit: variable.map(
             variable.fromInputValue(form.limit),
             {
@@ -165,14 +205,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 
-    combineLatest(controls.secret, controls.subject, controls.limit).listen(([secret, subject, limit]) => {
-        computeUniqpass(secret, subject, limit).then((password) => {
+    const charsetExclude = listenable.map(([charsetLower, charsetNumber, charsetSymbol, charsetUpper]) => ({
+        lower: !charsetLower,
+        number: !charsetNumber,
+        symbol: !charsetSymbol,
+        upper: !charsetUpper,
+    }))(combineLatest(controls.charsetLower, controls.charsetNumber, controls.charsetSymbol, controls.charsetUpper))
+
+    combineLatest(controls.secret, controls.subject, controls.limit, charsetExclude).listen(([secret, subject, limit, exclude]) => {
+        computeUniqpass(secret, subject, limit, exclude).then((password) => {
             controls.password.set(password)
             if (controls.password.get() !== "") form.password.select()
         })
     })
 
-    combineLatest(controls.subject, controls.limit).listen(([subject, limit]) => {
+    combineLatest(controls.subject, controls.limit, charsetExclude).listen(([subject, limit, exclude]) => {
         const url = new URL(location)
         const params = url.searchParams
         if (subject !== "") {
@@ -180,6 +227,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         params.set('limit', limit)
+
+        const ex = Object.entries(exclude).reduce((acc, [key, value]) => value ? acc + key[0] : acc, '')
+        if (ex === "") {
+            params.delete('ex')
+        } else {
+            params.set('ex', ex)
+        }
 
         history.replaceState(null, "", url)
     })
