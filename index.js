@@ -133,10 +133,15 @@ function combineLatest(...listenables) {
 
     const waitingFor = new Set(Array(listenables.length).keys())
     const latest = []
+
     return {
         listen: (listener) => {
             listeners.push(listener)
-            if (!listening) {
+            if (listening) {
+                if (waitingFor.size === 0) {
+                    listener([...latest])
+                }
+            } else {
                 listenables.forEach((listenable, idx) => listenable.listen((value) => {
                     latest[idx] = value
                     waitingFor.delete(idx)
