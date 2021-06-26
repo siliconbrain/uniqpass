@@ -1,0 +1,362 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>uniqpass v2</title>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro">
+        <style>
+            label {
+                font-family: 'Source Sans Pro', sans-serif;
+                margin: 0.25em 0.2em;
+            }
+
+            input {
+                font-family: monospace;
+                height: 23px;
+                margin: 0.25em 0.2em;
+            }
+
+            #options, #output {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            #options .option, #password {
+                display: flex;
+                flex-direction: column;
+                margin: 0.5em;
+            }
+
+            #options .option > span, #output span {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+            }
+
+            #output {
+                margin: 0.5em 0;
+            }
+
+            #limit-input {
+                width: 6ch;
+            }
+
+            #remember-secret {
+                display: flex;
+                align-items: center;
+            }
+
+            #remember-secret label {
+                font-size: 0.8em;
+            }
+
+            #password-input {
+                width: 33.2ch;
+            }
+
+            .spread {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            #alphabet-input {
+                width: 38ch;
+            }
+
+            #verification-code {
+                letter-spacing: 1pt;
+            }
+        </style>
+        <script>
+            const hash = 'SHA-256'
+            const defaultLimit = 256/8;
+            const secretStorageKey = "secret"
+            const verificationCodeAlphabet = [
+                "⌚", "⏰", "⏳", "☀", "☁", "☂", "☎", "☕",
+                "⚓", "⚖", "⚡", "⛄", "⛵", "✂", "✈", "✉",
+                "✍", "✏", "❤", "🌈", "🌍", "🌙", "🌡", "🌲",
+                "🌴", "🌵", "🌻", "🌽", "🍀", "🍁", "🍄", "🍆",
+                "🍉", "🍋", "🍌", "🍎", "🍑", "🍒", "🍔", "🍕",
+                "🍩", "🍭", "🍳", "🎀", "🎁", "🎂", "🎃", "🎅",
+                "🎈", "🎤", "🎧", "🎨", "🎩", "🎭", "🎯", "🎲",
+                "🎸", "🏁", "🏆", "🏠", "🐈", "🐌", "🐍", "🐓",
+                "🐘", "🐙", "🐝", "🐟", "🐢", "🐪", "🐶", "👁",
+                "👂", "👃", "👄", "👍", "👎", "👑", "👓", "👣",
+                "👻", "👼", "💀", "💊", "💍", "💎", "💡", "💣",
+                "💦", "💩", "💰", "💾", "📱", "📷", "📺", "🔑",
+                "🔒", "🔔", "🔥", "🔦", "🔪", "🕯", "🕷", "😈",
+                "😎", "🚀", "🚁", "🚗", "🚜", "🚫", "🚬", "🚲",
+                "🛒", "🤖", "🤝", "🥁", "🥥", "🦄", "🦋", "🦖",
+                "🦩", "🦶", "🦷", "🧀", "🧭", "🧲", "🧻", "🪑",
+            ]
+            const verificationCodeLength = 6
+
+            const textEncoder = new TextEncoder('utf-8')
+            function text2binary(text) {
+                return textEncoder.encode(text)
+            }
+
+            function binary2text(buffer, alphabet) {
+                if (!alphabet) {
+                    return ""
+                }
+                const bytes = new Uint8Array(buffer)
+                return bytes.reduce((text, index) => text + alphabet[index % alphabet.length], "")
+            }
+
+            function computeUniqpass(secret, subject, alphabet, limit) {
+                if (secret && subject && alphabet) {
+                    return crypto.subtle.digest('SHA-256', text2binary(secret + subject))
+                        .then(buff => buff.slice(0, limit || undefined))
+                        .then(buff => binary2text(buff, alphabet))
+                }
+                return Promise.resolve("")
+            }
+
+            function loadValuesFromStorage(controls) {
+                const storedSecret = localStorage.getItem(secretStorageKey)
+                if (storedSecret !== null) {
+                    controls.secret.set(storedSecret)
+                    controls.rememberSecret.set(true)
+                }
+            }
+
+            function loadValuesFromURL(controls) {
+                const params = new URLSearchParams(location.search)
+
+                if (params.has('limit')) {
+                    const limitString = params.get('limit')
+                    const limitValue = parseInt(limitString)
+                    if (isNaN(limitValue)) {
+                        console.warn("'limit' parameter set to invalid value:", limitString)
+                    } else {
+                        controls.limit.set(limitValue)
+                    }
+                }
+
+                const subjectValue = params.get('subject')
+                if (subjectValue) {
+                    controls.subject.set(subjectValue)
+                }
+
+                const alphabet = params.get('alphabet')
+                if (alphabet) {
+                    controls.alphabet.set(alphabet)
+                }
+            }
+
+            const variable = function() {
+
+                const make = ({get, set, listen, default: defaultValue}) => {
+                    let listening = false
+                    const listeners = []
+                    const onChange = () => {
+                        const value = get()
+                        listeners.forEach((listener) => listener(value))
+                    }
+                    return {
+                        default: defaultValue,
+                        get,
+                        set: value => {
+                            set(value)
+                            onChange()
+                        },
+                        listen: (listener) => {
+                            listeners.push(listener)
+                            listener(get())  // send current value
+                            if (!listening) {
+                                listen(onChange)
+                                listening = true
+                            }
+                        },
+                    }
+                }
+
+                return {
+                    fromInputValue: (input) => make({
+                        default: input.attributes.value?.value ?? "",
+                        get: () => input.value,
+                        set: (value) => { input.value = value },
+                        listen: (listener) => input.addEventListener('change', listener),
+                    }),
+                    fromInputChecked: (input) => make({
+                        get: () => input.checked,
+                        set: (value) => { input.checked = value },
+                        listen: (listener) => input.addEventListener('change', listener),
+                    }),
+                    make,
+                    map: (variable, mapping) => make({
+                        get: mapping.getter(variable.get),
+                        set: mapping.setter(variable.set),
+                        listen: variable.listen,
+                    }),
+                }
+            }()
+
+            const listenable = {
+                fromButtonClick: (button) => ({
+                    listen: (listener) => button.addEventListener('click', () => listener()),
+                }),
+                map: (transform) => (listenable) => ({
+                    listen: (listener) => listenable.listen((value) => listener(transform(value))),
+                }),
+            }
+
+            function combineLatest(...listenables) {
+                let listening = false
+                const listeners = []
+
+                const waitingFor = new Set(Array(listenables.length).keys())
+                const latest = []
+
+                return {
+                    listen: (listener) => {
+                        listeners.push(listener)
+                        if (listening) {
+                            if (waitingFor.size === 0) {
+                                listener([...latest])
+                            }
+                        } else {
+                            listenables.forEach((listenable, idx) => listenable.listen((value) => {
+                                latest[idx] = value
+                                waitingFor.delete(idx)
+                                if (waitingFor.size === 0) {
+                                    listeners.forEach(listener => listener([...latest]))
+                                }
+                            }))
+                            listening = true
+                        }
+                    }
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const form = {
+                    alphabet: document.getElementById('alphabet-input'),
+                    limit: document.getElementById('limit-input'),
+                    password: document.getElementById('password-input'),
+                    passwordToClipboard: document.getElementById('password-to-clipboard'),
+                    rememberSecret: document.getElementById('remember-secret-input'),
+                    resetLimit: document.getElementById('reset-limit'),
+                    secret: document.getElementById('secret-input'),
+                    subject: document.getElementById('subject-input'),
+                    verificationCode: document.getElementById('verification-code'),
+                }
+
+                const controls = {
+                    alphabet: variable.fromInputValue(form.alphabet),
+                    limit: variable.map(
+                        variable.fromInputValue(form.limit),
+                        {
+                            getter: (get) => () => parseInt(get()),
+                            setter: (set) => (value) => set(value.toString()),
+                        }
+                    ),
+                    password: variable.fromInputValue(form.password),
+                    passwordToClipboard: listenable.fromButtonClick(form.passwordToClipboard),
+                    rememberSecret: variable.fromInputChecked(form.rememberSecret),
+                    resetLimit: listenable.fromButtonClick(form.resetLimit),
+                    secret: variable.fromInputValue(form.secret),
+                    subject: variable.fromInputValue(form.subject),
+                }
+
+                loadValuesFromStorage(controls)
+
+                loadValuesFromURL(controls)
+
+                if (form.secret.value === "") {
+                    form.secret.focus()
+                } else if (form.subject.value === "") {
+                    form.subject.focus()
+                } else {
+                    form.password.focus()
+                }
+
+                controls.secret.listen((secret) => secret
+                    ? crypto.subtle.digest('SHA-256', text2binary(secret))
+                        .then((buff) => binary2text(buff.slice(0, verificationCodeLength), verificationCodeAlphabet))
+                        .then((code) => {form.verificationCode.innerText = code})
+                    : (form.verificationCode.innerText = '')
+                )
+
+                combineLatest(controls.secret, controls.rememberSecret).listen(([secret, remember]) => {
+                    if (remember) {
+                        localStorage.setItem(secretStorageKey, secret)
+                    } else {
+                        localStorage.removeItem(secretStorageKey)
+                    }
+                })
+
+                combineLatest(controls.secret, controls.subject, controls.alphabet, controls.limit).listen(([secret, subject, alphabet, limit]) => {
+                    alphabet = Array.from(alphabet.matchAll(/./gu), m => m[0])
+                    computeUniqpass(secret, subject, alphabet, limit).then((password) => {
+                        controls.password.set(password)
+                        if (controls.password.get() !== "") form.password.select()
+                    })
+                })
+
+                combineLatest(controls.subject, controls.limit, controls.alphabet).listen(([subject, limit, alphabet]) => {
+                    const url = new URL(location)
+                    const params = url.searchParams
+                    if (subject !== "") {
+                        params.set('subject', subject)
+                    }
+
+                    params.set('limit', limit)
+
+                    if (alphabet === controls.alphabet.default) {
+                        params.delete('alphabet')
+                    } else {
+                        params.set('alphabet', alphabet)
+                    }
+
+                    history.replaceState(null, "", url)
+                })
+
+                controls.resetLimit.listen(() => controls.limit.set(defaultLimit))
+
+                controls.passwordToClipboard.listen(() => navigator.clipboard.writeText(controls.password.get()))
+            })
+        </script>
+    </head>
+    <body>
+        <section id="options">
+            <div id="secret" class="option">
+                <span class="spread">
+                    <label for="secret-input">secret</label>
+                    <span id="verification-code"></span>
+                </span>
+                <input id="secret-input" type="password">
+                <div id="remember-secret">
+                    <input id="remember-secret-input" type="checkbox" tabindex="1">
+                    <label for="remember-secret-input">remember secret</label>
+                </div>
+            </div>
+            <div id="subject" class="option">
+                <label for="subject-input">subject</label>
+                <input id="subject-input" type="text" placeholder="example.org">
+            </div>
+            <div id="limit" class="option">
+                <label for="limit-input">limit</label>
+                <span>
+                    <input id="limit-input" type="number" min="1" max="32" value="32">
+                    <button id="reset-limit">⟲</button>
+                </span>
+            </div>
+            <div id="alphabet" class="option">
+                <label for="alphabet-input">alphabet</label>
+                <input id="alphabet-input" type="text" value=" !&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~">
+            </div>
+        </section>
+        <section id="output">
+            <div id="password">
+                <label for="password-input">uniqpass</label>
+                <span>
+                    <input id="password-input" type="text" readonly>
+                    <button id="password-to-clipboard"><span>📋</span></button>
+                </span>
+            </div>
+        </section>
+    </body>
+</html>
