@@ -67,9 +67,30 @@
             #verification-code {
                 letter-spacing: 1pt;
             }
+
+            .hidden {
+                display: none !important;
+            }
+
+            #debug {
+                margin: 0.5em;
+            }
+
+            #debug label {
+                color: slategrey;
+            }
+
+            #debug-info-toggle {
+                display: none;
+            }
+
+            #debug-info-container {
+                display: flex;
+                flex-direction: column;
+            }
         </style>
         <script>
-            const hash = 'SHA-256'
+            const hashType = 'SHA-256'
             const defaultLimit = 256/8;
             const secretStorageKey = "secret"
             const verificationCodeAlphabet = [
@@ -105,13 +126,26 @@
                 return bytes.reduce((text, index) => text + alphabet[index % alphabet.length], "")
             }
 
+            function binary2hex(buffer) {
+                return [...new Uint8Array(buffer)]
+                    .map(byte => byte.toString(16).padStart(2, '0'))
+                    .join(' ');
+            }
+
             function computeUniqpass(secret, subject, alphabet, limit) {
                 if (secret && subject && alphabet) {
-                    return crypto.subtle.digest('SHA-256', text2binary(secret + subject))
-                        .then(buff => buff.slice(0, limit || undefined))
-                        .then(buff => binary2text(buff, alphabet))
+                    const saltedSecretText = secret + subject
+                    const result = {
+                        saltedSecretText,
+                        saltedSecretBinary: text2binary(saltedSecretText),
+                    }
+                    return crypto.subtle.digest(hashType, result.saltedSecretBinary)
+                        .then(digest => ({...result, digest, croppedDigest: digest.slice(0, limit || undefined)}))
+                        .then(result => ({...result,
+                            password: binary2text(result.croppedDigest, alphabet),
+                        }))
                 }
-                return Promise.resolve("")
+                return Promise.resolve({})
             }
 
             function loadValuesFromStorage(controls) {
@@ -234,6 +268,12 @@
             document.addEventListener('DOMContentLoaded', () => {
                 const form = {
                     alphabet: document.getElementById('alphabet-input'),
+                    debugInfoToggle: document.getElementById('debug-info-toggle'),
+                    debugInfoContainer: document.getElementById('debug-info-container'),
+                    debugInfoSaltedSecretText: document.querySelector('#debug-info-container > input[name=salted-secret-text]'),
+                    debugInfoSaltedSecretBinary: document.querySelector('#debug-info-container > input[name=salted-secret-binary]'),
+                    debugInfoDigest: document.querySelector('#debug-info-container > input[name=digest]'),
+                    debugInfoCroppedDigest: document.querySelector('#debug-info-container > input[name=cropped-digest]'),
                     limit: document.getElementById('limit-input'),
                     password: document.getElementById('password-input'),
                     passwordToClipboard: document.getElementById('password-to-clipboard'),
@@ -246,6 +286,7 @@
 
                 const controls = {
                     alphabet: variable.fromInputValue(form.alphabet),
+                    debugInfoToggle: variable.fromInputChecked(form.debugInfoToggle),
                     limit: variable.map(
                         variable.fromInputValue(form.limit),
                         {
@@ -290,9 +331,14 @@
 
                 combineLatest(controls.secret, controls.subject, controls.alphabet, controls.limit).listen(([secret, subject, alphabet, limit]) => {
                     alphabet = Array.from(alphabet.matchAll(/./gu), m => m[0])
-                    computeUniqpass(secret, subject, alphabet, limit).then((password) => {
-                        controls.password.set(password)
+                    computeUniqpass(secret, subject, alphabet, limit).then(({password, saltedSecretText, saltedSecretBinary, digest, croppedDigest}) => {
+                        controls.password.set(password || "")
                         if (controls.password.get() !== "") form.password.select()
+
+                        form.debugInfoSaltedSecretText.value = saltedSecretText || ""
+                        form.debugInfoSaltedSecretBinary.value = binary2hex(saltedSecretBinary)
+                        form.debugInfoDigest.value = binary2hex(digest)
+                        form.debugInfoCroppedDigest.value = binary2hex(croppedDigest)
                     })
                 })
 
@@ -317,6 +363,8 @@
                 controls.resetLimit.listen(() => controls.limit.set(defaultLimit))
 
                 controls.passwordToClipboard.listen(() => navigator.clipboard.writeText(controls.password.get()))
+
+                controls.debugInfoToggle.listen((checked) => form.debugInfoContainer.classList.toggle('hidden', !checked))
             })
         </script>
     </head>
@@ -356,6 +404,22 @@
                     <input id="password-input" type="text" readonly>
                     <button id="password-to-clipboard"><span>📋</span></button>
                 </span>
+            </div>
+        </section>
+        <section id="debug">
+            <div>
+                <label for="debug-info-toggle">debug</label>
+                <input id="debug-info-toggle" type="checkbox">
+            </div>
+            <div id="debug-info-container" class="hidden">
+                <label for="salted-secret-text">salted secret text</label>
+                <input name="salted-secret-text" type="text">
+                <label for="salted-secret-binary">salted secret binary</label>
+                <input name="salted-secret-binary" type="text">
+                <label for="digest">digest</label>
+                <input name="digest" type="text">
+                <label for="cropped-digest">cropped digest</label>
+                <input name="cropped-digest" type="text">
             </div>
         </section>
     </body>
