@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html manifest="/v2/offline.appcache">
     <head>
         <meta charset="utf-8">
@@ -270,10 +271,10 @@
                     alphabet: document.getElementById('alphabet-input'),
                     debugInfoToggle: document.getElementById('debug-info-toggle'),
                     debugInfoContainer: document.getElementById('debug-info-container'),
-                    debugInfoSaltedSecretText: document.querySelector('#debug-info-container > input[name=salted-secret-text]'),
-                    debugInfoSaltedSecretBinary: document.querySelector('#debug-info-container > input[name=salted-secret-binary]'),
-                    debugInfoDigest: document.querySelector('#debug-info-container > input[name=digest]'),
-                    debugInfoCroppedDigest: document.querySelector('#debug-info-container > input[name=cropped-digest]'),
+                    debugInfoSaltedSecretText: document.getElementById('debug-info-salted-secret-text'),
+                    debugInfoSaltedSecretBinary: document.getElementById('debug-info-salted-secret-binary'),
+                    debugInfoDigest: document.getElementById('debug-info-digest'),
+                    debugInfoCroppedDigest: document.getElementById('debug-info-cropped-digest'),
                     limit: document.getElementById('limit-input'),
                     password: document.getElementById('password-input'),
                     passwordToClipboard: document.getElementById('password-to-clipboard'),
@@ -412,14 +413,14 @@
                 <input id="debug-info-toggle" type="checkbox">
             </div>
             <div id="debug-info-container" class="hidden">
-                <label for="salted-secret-text">salted secret text</label>
-                <input name="salted-secret-text" type="text">
-                <label for="salted-secret-binary">salted secret binary</label>
-                <input name="salted-secret-binary" type="text">
-                <label for="digest">digest</label>
-                <input name="digest" type="text">
-                <label for="cropped-digest">cropped digest</label>
-                <input name="cropped-digest" type="text">
+                <label for="debug-info-salted-secret-text">salted secret text</label>
+                <input id="debug-info-salted-secret-text" type="text">
+                <label for="debug-info-salted-secret-binary">salted secret binary</label>
+                <input id="debug-info-salted-secret-binary" type="text">
+                <label for="debug-info-digest">digest</label>
+                <input id="debug-info-digest" type="text">
+                <label for="debug-info-cropped-digest">cropped digest</label>
+                <input id="debug-info-cropped-digest" type="text">
             </div>
         </section>
     </body>
